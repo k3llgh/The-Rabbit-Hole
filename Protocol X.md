@@ -1,18 +1,18 @@
-Protocol X
-Scope: Hybrid optimistic/pessimistic governance with dual-delegation staking vault, timelock bypass, veto mechanism, and selector allowlist.
+**Protocol X**
+**Scope:** Hybrid optimistic/pessimistic governance with dual-delegation staking vault, timelock bypass, veto mechanism, and selector allowlist.
 
-Prior Audits: Audit A (Feb 2026), Audit B (May 2026)
+**Prior Audits:** Audit A (Feb 2026), Audit B (May 2026)
 
-Finding: bypass-execute-single-role-grief
-Source: Audit B (May 2026)
-Original Severity: CRITICAL
-Status: DUPLICATE of prior finding / Griefing mechanism invalid
+**Finding: bypass-execute-single-role-grief**
+_Source: Audit B (May 2026)_
+_Original Severity: CRITICAL_
+_Status: DUPLICATE of prior finding / Griefing mechanism invalid_
 
-Claimed mechanism: Attacker with only proposer role calls bypass function, writes timestamp to storage, internal execution reverts on missing executor role, timestamp persists permanently. Legitimate execution blocked.
+_Claimed mechanism:_ Attacker with only proposer role calls bypass function, writes timestamp to storage, internal execution reverts on missing executor role, timestamp persists permanently. Legitimate execution blocked.
 
-Prior finding: Audit A identified that an address holding both proposer and executor roles can call the bypass function directly, skipping governance entirely. Recommended restricting the function to the governor address. Severity: LOW.
+_Prior finding:_ Audit A identified that an address holding both proposer and executor roles can call the bypass function directly, skipping governance entirely. Recommended restricting the function to the governor address. Severity: LOW.
 
-Why the griefing mechanism fails: The execution function is called via direct internal call. When an internal call reverts, the EVM unwinds all state changes in the entire transaction. The timestamp write does not durably persist.
+_Why the griefing mechanism fails:_ The execution function is called via direct internal call. When an internal call reverts, the EVM unwinds all state changes in the entire transaction. The timestamp write does not durably persist.
 
 ```solidity
 function bypass(address[] calldata targets, uint256[] calldata values, bytes[] calldata payloads, bytes32 salt)
@@ -63,12 +63,12 @@ function bypass(...) external {
 
 ```
 
-Finding: zero-supply-auto-cancel
-Source: Audit B (May 2026)
-Original Severity: HIGH
-Status: INVALID
+**Finding: zero-supply-auto-cancel**
+_Source: Audit B (May 2026)_
+_Original Severity: HIGH_
+_Status: INVALID_
 
-Claimed mechanism: When past supply is zero at snapshot, state function returns Canceled but the internal storage flag remains false. Creates state machine inconsistency.
+_Claimed mechanism:_ When past supply is zero at snapshot, state function returns Canceled but the internal storage flag remains false. Creates state machine inconsistency.
 
 ```solidity
 function state(uint256 proposalId) external view returns (ProposalState) {
@@ -89,15 +89,15 @@ function state(uint256 proposalId) external view returns (ProposalState) {
 }
 
 ```
-Why it's invalid: The behavior is documented in the protocol specification. The proposal cannot execute regardless of internal flag state. A redundant `cancel()` call would set the flag and emit an event, but this is purely cosmetic with no security impact. The zero-supply scenario requires all stakers to redeem, which is an extreme edge case.
+_Why it's invalid:_ The behavior is documented in the protocol specification. The proposal cannot execute regardless of internal flag state. A redundant `cancel()` call would set the flag and emit an event, but this is purely cosmetic with no security impact. The zero-supply scenario requires all stakers to redeem, which is an extreme edge case.
 
 
-Finding: veto-threshold-floor-division
-Source: Audit B (May 2026)
-Original Severity: HIGH
-Status: INVALID
+**Finding: veto-threshold-floor-division**
+_Source: Audit B (May 2026)_
+_Original Severity: HIGH_
+_Status: INVALID_
 
-Claimed mechanism: Specification says ceiling division, code uses floor division. Attacker can veto with fewer tokens than intended.
+_Claimed mechanism:_ Specification says ceiling division, code uses floor division. Attacker can veto with fewer tokens than intended.
 
 ```solidity
 // Spec: ceil(threshold * supply / SCALE)
@@ -107,7 +107,7 @@ uint256 thresholdTokens = (vetoThreshold * pastSupply) / 1e18;
 thresholdTokens = max(thresholdTokens, 1);
 
 ```
-Why it's invalid: Maximum error is less than one token unit. With 18-decimal tokens and realistic supplies, the error is at most 1 wei. The max(..., 1) guard prevents zero thresholds. An attacker within 1 wei of the threshold already controls the threshold fraction of supply.
+_Why it's invalid:_ Maximum error is less than one token unit. With 18-decimal tokens and realistic supplies, the error is at most 1 wei. The max(..., 1) guard prevents zero thresholds. An attacker within 1 wei of the threshold already controls the threshold fraction of supply.
 
 ```text
 threshold = 10%, supply = 1001:
@@ -118,12 +118,12 @@ threshold = 10%, supply = 1001:
 ```
 
 
-Finding: cancel-lock-reward-loss
-Source: Audit B (May 2026)
-Original Severity: MEDIUM
-Status: INVALID
+**Finding: cancel-lock-reward-loss**
+_Source: Audit B (May 2026)_
+_Original Severity: MEDIUM_
+_Status: INVALID_
 
-Claimed mechanism: User cancelling an unstaking lock loses rewards accrued during the delay window because the reward index cursor jumps forward without accruing the delta.
+_Claimed mechanism:_ User cancelling an unstaking lock loses rewards accrued during the delay window because the reward index cursor jumps forward without accruing the delta.
 
 ```solidity
 function cancelLock(uint256 lockId) external {
@@ -140,7 +140,7 @@ function accrueUser(address user, address rewardToken) internal {
 }
 
 ```
-Why it's invalid:
+_Why it's invalid:_
 
 ```text
 depositAndDelegate(1000): balance = 1000, userIndex = 50
@@ -154,12 +154,12 @@ cancelLock -> deposit:   accrueUser called, balance = 0
 During the unstaking window, `balanceOf(user) = 0`, so accrued delta is zero. The user earns no rewards because they hold no shares. This is share-proportional reward distribution working correctly.
 
 
-Finding: veto-denominator-mismatch
-Source: Cross-audit analysis
-Original Severity: N/A (new)
-Status: INFORMATIONAL
+**Finding: veto-denominator-mismatch**
+_Source: Cross-audit analysis_
+_Original Severity: N/A (new)_
+_Status: INFORMATIONAL_
 
-Observation: The veto threshold uses total supply as denominator, but veto votes come from a delegate checkpoint that excludes non-delegated shares.
+_Observation:_ The veto threshold uses total supply as denominator, but veto votes come from a delegate checkpoint that excludes non-delegated shares.
 
 ```solidity
 // Threshold denominator: all shares
@@ -179,7 +179,7 @@ function moveDelegatedVotes(address src, address dst, uint256 amount) internal {
 }
 
 ```
-Why it's informational:
+_Why it's informational:_
 
 ```text
 Setup: vetoThreshold = 20%, supply = 100
@@ -191,7 +191,7 @@ Setup: vetoThreshold = 20%, supply = 100
   maxVeto < threshold -> mathematically unreachable
 
 ```
-Why the fix space is empty:
+_Why the fix space is empty:_
 
 ```solidity
 // Fix A: manipulable denominator
@@ -206,12 +206,12 @@ require(pastOptimisticSupply >= thresholdFraction * pastTotalSupply);
 The dual-delegation model intentionally separates voting streams. No fix exists that doesn't introduce a worse problem. Resolution is documentation.
 
 
-Finding: misleading-accounting-comment
-Source: Cross-audit analysis
-Original Severity: N/A (new)
-Status: INFORMATIONAL
+**Finding: misleading-accounting-comment**
+_Source: Cross-audit analysis_
+_Original Severity: N/A (new)_
+_Status: INFORMATIONAL_
 
-Observation: A comment in the withdrawal function declares an accounting correction as "redundant" when internal control flow makes it load-bearing.
+_Observation:_ A comment in the withdrawal function declares an accounting correction as "redundant" when internal control flow makes it load-bearing.
 
 ```solidity
 function _withdraw(address owner, uint256 assets, uint256 shares) internal {
@@ -234,7 +234,7 @@ function _withdraw(address owner, uint256 assets, uint256 shares) internal {
 }
 
 ```
-Execution trace for delayed withdrawal:
+_Execution trace for delayed withdrawal:_
 
 ```text
 1. snapshot -= assets               // correctly decreased
